@@ -129,3 +129,47 @@ secondstage['doddfrank'] = np.where((secondstage['YEAR'] == 2010.0) | (secondsta
                                     (secondstage['YEAR'] == 2017.0) | (secondstage['YEAR'] == 2018.0) |
                                     (secondstage['YEAR'] == 2019.0) | (secondstage['YEAR'] == 2020.0) |
                                     (secondstage['YEAR'] == 2021.0) | (secondstage['YEAR'] == 2022.0), 1, 0) 
+
+
+### STATA CODE ###
+clear
+
+cd "C:\Users\ASUS\Downloads"
+
+* Compensation - Total SEC - With Policy Dummies and Volatility Index *
+ssc install estout, replace
+
+import delimited "stockvolfinal1.csv"
+
+** First Stage **
+reg adjusted_tc emp tenure payczar doddfrank cbvix mom, vce(robust) // First Stage IV 
+
+est store reg1
+
+predict ajtc_hat, xb // resid 
+
+reg adjusted_stockoptions emp tenure payczar doddfrank cbvix mom, vce(robust) // First Stage IV 
+
+test emp tenure
+
+est store reg2
+
+predict ajso_hat, xb // resid 
+
+
+** Second Stage **
+generate lnasd = ln(annualized_sd)
+
+reg lnasd ajtc_hat ajso_hat payczar doddfrank cbvix mom, vce(robust) // Second Stage IV
+
+test payczar doddfrank
+
+test cbvix mom
+
+test payczar doddfrank cbvix mom
+
+est store reg_2SLS
+
+esttab reg1 reg2 reg_2SLS, b(3) se(3) star compress nogap s(N r2)
+
+estimates table, star(.1 .05 .01)
